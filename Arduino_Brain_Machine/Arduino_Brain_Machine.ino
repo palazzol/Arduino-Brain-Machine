@@ -46,7 +46,8 @@
 #include <avr/pgmspace.h> // for arrays - PROGMEM 
 #include <avr/sleep.h> // A library to control the sleep mode
 #include <avr/power.h> // A library to control power
-#include <Tone.h> // Download from https://github.com/bhagman/Tone
+
+#include "BinauralTonePair.cpp"
 
 /***************************************************
   GLOBALS
@@ -56,11 +57,14 @@
 ***************************************************/
 
 // =============== uncomment for serial debugging ===============
-// #define DEBUG
+#define DEBUG
 // =========================================================================
 
-#define rightEarPin 9 // Define pinout for left ear
-#define leftEarPin 10 // Define pinout for left ear
+#define AUTOSTART
+//#define PHASE_LOCK_LIGHT_AND_SOUND
+
+#define rightEarPin 11 // Define pinout for left ear
+#define leftEarPin 9 // Define pinout for left ear
 #define rightEyePin 5 // Define pinout for right eye
 #define leftEyePin 6 // Define pinout for left eye
 #define interruptPin 2 // the input pin where the pushbutton is connected.
@@ -68,8 +72,8 @@
 
 // Common anode. 255 is off
 int LEDIntensity = 127;
-#define LED_ON (255-LEDIntensity)
-#define LED_OFF 255
+#define LED_ON (LEDIntensity)
+#define LED_OFF 0
 
 // ====== Altman's "chunky" frequency-hopping method =======
 
@@ -184,8 +188,11 @@ const chunkyBrainwaveElement chunkybrainwaveTab[] PROGMEM = {
 
 ***************************************************/
 float binauralBeat[] = { 14.4, 11.1, 6.0, 2.2, 40.4 }; // For beta, alpha, gamma and delta beat differences.
-Tone rightEarTone;
-Tone leftEarTone;
+#ifdef PHASE_LOCK_LIGHT_AND_SOUND
+BinauralTonePair tonePair(true);
+#else
+BinauralTonePair tonePair(false);
+#endif
 float centralTone = 440.0; //We're starting at this tone and spreading the binaural beat from there.
 
 //Blink statuses for function 'blink_LEDs' and 'alt_blink_LEDS
@@ -321,14 +328,18 @@ void setup()  {
 #ifdef DEBUG
   Serial.begin(9600);
 #endif
-  rightEarTone.begin(rightEarPin); // Tone rightEarTone begins at pin output rightEarPin
-  leftEarTone.begin(leftEarPin); // Tone leftEarTone begins at pin output leftEarPin
+  tonePair.begin(rightEarPin, leftEarPin);
   pinMode(rightEyePin, OUTPUT); // Pin output at rightEye
   pinMode(leftEyePin, OUTPUT); // Pin output at leftEye
   pinMode(interruptPin, INPUT_PULLUP); // User input (push button)
   pinMode(potPin, INPUT); // User input (potentiometer)
+#ifdef AUTOSTART
+  currentSession = 4;
+  machineState = STATE_RUNNING;
+#else
   set_sleep_mode(SLEEP_MODE_PWR_DOWN);
   attachInterrupt(digitalPinToInterrupt(interruptPin), buttonInterrupt, FALLING);
+#endif
 }
 
 
@@ -375,8 +386,7 @@ void loop() {
         float totalDms = session[j].duration * 10000.0;
         while (elapsedDms < totalDms) {
           float freq = currentFrequency + (session[j].frequency - currentFrequency) * (elapsedDms / totalDms);
-          rightEarTone.play(centralTone - (freq / 2.0));
-          leftEarTone.play(centralTone + (freq / 2.0));
+          tonePair.play(centralTone,freq);
           unsigned long halfWaveLength = round(5000.0 / freq);
           setLEDs(LED_ON);
           if (delay_decimiliseconds(halfWaveLength)) {
@@ -423,8 +433,7 @@ void loop() {
   };
 
   setLEDs(LED_OFF);
-  rightEarTone.stop();
-  leftEarTone.stop();
+  tonePair.stop();
 #ifdef DEBUG
   Serial.print("Done #");
   Serial.print(currentSession);
@@ -468,6 +477,22 @@ bool delay_decimiliseconds(unsigned long int dms) {
   return false;
 }
 
+static volatile int led_trigger = 0;
+
+#ifdef PHASE_LOCK_LIGHT_AND_SOUND
+ISR(TIMER1_COMPA_vect)
+{
+  static int ledx_state;
+
+  tonePair.accumulator += tonePair.increment;
+  if (tonePair.accumulator < tonePair.modulo)
+    return;
+  tonePair.accumulator %= tonePair.modulo;
+
+  led_trigger = 1;
+}
+#endif
+
 /***************************************************
   This function blinks the LEDs
   (connected to Pin 6, Pin 5 -
@@ -485,15 +510,31 @@ bool blink_LEDs( unsigned long int duration, unsigned long int onTime, unsigned 
     analogWrite(rightEyePin, LED_ON);
     analogWrite(leftEyePin, LED_ON);
     // turn on LEDs
+#ifdef PHASE_LOCK_LIGHT_AND_SOUND
+    while(!led_trigger);
+    led_trigger = 0;
+    if (machineState != STATE_RUNNING) {
+      return true; // there was an interrupt
+    }
+#else
     if (delay_decimiliseconds(onTime)) {  //   for onTime
       return true;
     }
+#endif
     analogWrite(rightEyePin, LED_OFF);
     analogWrite(leftEyePin, LED_OFF);
     // turn off LEDs
+#ifdef PHASE_LOCK_LIGHT_AND_SOUND
+    while(!led_trigger);
+    led_trigger = 0;
+    if (machineState != STATE_RUNNING) {
+      return true; // there was an interrupt
+    }
+#else    
     if (delay_decimiliseconds(offTime)) { //   for offTime
       return true;
     }
+#endif
   }
   return false;
 }
@@ -503,14 +544,30 @@ bool alt_blink_LEDs( unsigned long int duration, unsigned long int onTime, unsig
   for (int i = 0; i < (duration / (onTime + offTime)); i++) {
     analogWrite(rightEyePin, LED_ON);
     analogWrite(leftEyePin, LED_OFF);
+#ifdef PHASE_LOCK_LIGHT_AND_SOUND
+    while(!led_trigger);
+    led_trigger = 0;
+    if (machineState != STATE_RUNNING) {
+      return true; // there was an interrupt
+    }
+#else
     if (delay_decimiliseconds(onTime)) {  //   for onTime
       return true;
     }
+#endif
     analogWrite(rightEyePin, LED_OFF);
     analogWrite(leftEyePin, LED_ON);
+#ifdef PHASE_LOCK_LIGHT_AND_SOUND
+    while(!led_trigger);
+    led_trigger = 0;
+    if (machineState != STATE_RUNNING) {
+      return true; // there was an interrupt
+    }
+#else
     if (delay_decimiliseconds(offTime)) { //   for offTime
       return true;
     }
+#endif
   }
   return false;
 }
@@ -530,32 +587,28 @@ bool do_chunky_brainwave_element(int index) {
   switch (brainChr) {
     case 'b':
       // Beta
-      rightEarTone.play(centralTone - (binauralBeat[0] / 2));
-      leftEarTone.play(centralTone + (binauralBeat[0] / 2));
+      tonePair.play(centralTone, binauralBeat[0]);
       //  Generate binaural beat of 14.4Hz
       //  delay for the time specified in the table while blinking the LEDs at the correct rate
       return blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 347, 347 );
 
     case 'B':
       // Beta - with alternating blinks
-      rightEarTone.play(centralTone - (binauralBeat[0] / 2));
-      leftEarTone.play(centralTone + (binauralBeat[0] / 2));
+      tonePair.play(centralTone, binauralBeat[0]);
       //  Generate binaural beat of 14.4Hz
       //  delay for the time specified in the table while blinking the LEDs at the correct rate
       return alt_blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 347, 347 );
 
     case 'a':
       // Alpha
-      rightEarTone.play(centralTone - (binauralBeat[1] / 2));
-      leftEarTone.play(centralTone + (binauralBeat[1] / 2));
+      tonePair.play(centralTone, binauralBeat[1]);
       // Generates a binaural beat of 11.1Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
       return blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 451, 450 );
 
     case 'A':
       // Alpha
-      rightEarTone.play(centralTone - (binauralBeat[1] / 2));
-      leftEarTone.play(centralTone + (binauralBeat[1] / 2));
+      tonePair.play(centralTone, binauralBeat[1]);
       // Generates a binaural beat of 11.1Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
       return alt_blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 451, 450 );
@@ -564,8 +617,7 @@ bool do_chunky_brainwave_element(int index) {
       // Theta
       // start Timer 1 with the correct Offset Frequency for a binaural beat for the Brainwave Type
       //   to Right ear speaker through output OC1A (PB3, pin 15)
-      rightEarTone.play(centralTone - (binauralBeat[2] / 2));
-      leftEarTone.play(centralTone + (binauralBeat[2] / 2));
+      tonePair.play(centralTone, binauralBeat[2]);
       // Generates a binaural beat of 6.0Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
       return blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 835, 835 );
@@ -574,40 +626,35 @@ bool do_chunky_brainwave_element(int index) {
       // Theta
       // start Timer 1 with the correct Offset Frequency for a binaural beat for the Brainwave Type
       //   to Right ear speaker through output OC1A (PB3, pin 15)
-      rightEarTone.play(centralTone - (binauralBeat[2] / 2));
-      leftEarTone.play(centralTone + (binauralBeat[2] / 2));
+      tonePair.play(centralTone, binauralBeat[2]);
       // Generates a binaural beat of 6.0Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
       return alt_blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 835, 835 );
 
     case 'd':
       // Delta
-      rightEarTone.play(centralTone - (binauralBeat[3] / 2));
-      leftEarTone.play(centralTone + (binauralBeat[3] / 2));
+      tonePair.play(centralTone, binauralBeat[3]);
       // Generates a binaural beat of 2.2Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
       return blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 2253, 2253 );
 
     case 'D':
       // Delta
-      rightEarTone.play(centralTone - (binauralBeat[3] / 2));
-      leftEarTone.play(centralTone + (binauralBeat[3] / 2));
+      tonePair.play(centralTone, binauralBeat[3]);
       // Generates a binaural beat of 2.2Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
       return alt_blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 2253, 2253 );
 
     case 'g':
       // Gamma
-      rightEarTone.play(centralTone - (binauralBeat[4] / 2));
-      leftEarTone.play(centralTone + (binauralBeat[4] / 2));
+      tonePair.play(centralTone, binauralBeat[4]);
       // Generates a binaural beat of 40.4Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
       return blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 124, 124 );
 
     case 'G':
       // Gamma
-      rightEarTone.play(centralTone - (binauralBeat[4] / 2));
-      leftEarTone.play(centralTone + (binauralBeat[4] / 2));
+      tonePair.play(centralTone, binauralBeat[4]);
       // Generates a binaural beat of 40.4Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
       return alt_blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 124, 124 );
@@ -617,5 +664,3 @@ bool do_chunky_brainwave_element(int index) {
       return true;      // end of table
   }
 }
-
-
