@@ -55,15 +55,18 @@
 // Add an option to use LEDs connected to ground (Common Cathode)
 //#define LEDS_TO_GROUND
 
-// By default, use Tone library.  If you want more accuracy, use this define.
-// Forces the use of certain pins for the audio, and not portable.
+// By default, use Tone library.  Use this define if you want the
+// beat frequency to be exact.  This forces the use of certain pins 
+// for the audio, and is not portable.
 //#define USE_RAW_TIMERS
 
 #ifndef USE_RAW_TIMERS
 
 // This class abstracts the connection to the Tone library
-// We may want to control the timers directly in the future
-// for more accuracy (and less portability)
+// There are two versions.  This one is equivalent to the original code
+// and uses the Tone library
+// The second version uses raw timers, so it's not as portable but
+// the code is very precise.  It particular, the beat frequency is exact.
 
 #include <Tone.h> // Download from https://github.com/bhagman/Tone
 
@@ -90,6 +93,75 @@ class TonePair
 
 #else
 
+#include <avr/io.h>
+
+class TonePair
+{
+  public:
+    TonePair() {};
+    void begin(int rightEarPin, int leftEarPin) {
+      // Must use these pins, they are tied to the right timers
+      if ((rightEarPin != 11) and (leftEarPin != 9)) {
+#ifdef DEBUG
+        Serial.println("Error: Must use pins 11 and 9 to use Raw Timers!");
+#endif
+        return -1;
+      }     
+      DDRB = 0b00000000;   // set PB1,PB3 pins as outputs
+      PORTB = 0x00;        // all PORTB output pins Off
+      
+      // Right ear tone will use Timer2, 8-bit resolution
+      TIMSK2 = 0x00;       // no Timer interrupts enabled
+      //   8-bit Timer2 OC2A (PB3, pin 11) is set up for Fast PWM mode, toggling output on each compare
+      //   Fclk = Clock = 16MHz
+      //   Prescale = 256
+      //   F = Fclk / (2 * Prescale * (1 + OCR2A) ) = 200.321Hz
+      TCCR2A = 0b01000011;  // COM0A1:0=01 to toggle OC0A on Compare Match
+                            // COM0B1:0=00 to disconnect OC0B
+                            // bits 3:2 are unused
+                            // WGM01:00=11 for Fast PWM Mode (WGM02=1 in TCCR0B)
+      TCCR2B = 0b00001110;  // FOC0A=0 (no force compare)
+                            // F0C0B=0 (no force compare)
+                            // bits 5:4 are unused
+                            // WGM2=1 for fast PWM Mode (WGM01:00=11 in TCCR0A)
+                            // CS02:00=110 for divide by 256 prescaler
+      TIMSK1 = 0x00;        //  no Timer interrupts enabled
+      // Left ear tone will use Timer1, 16-bit resolution
+      // set up T1 to accept Offset Frequencies on Right ear speaker through OC1A (but don't actually start the Timer1 here)
+      //   16-bit Timer1 OC1A (PB1, pin 9) is set up for CTC mode, toggling output on each compare
+      //   Fclk = Clock = 8MHz
+      //   Prescale = 1
+      //   F = Fclk / (2 * Prescale * (1 + OCR1A) )
+      TCCR1A = 0b01000011;  // COM1A1:0=01 to toggle OC1A on Compare Match
+                            // COM1B1:0=00 to disconnect OC1B
+                            // bits 3:2 are unused
+                            // WGM11:10=11 for Fast PWM Mode (WGM13:12=11 in TCCR1B)
+      TCCR1B = 0b00011001;  // ICNC1=0 (no Noise Canceller)
+                            // ICES1=0 (don't care about Input Capture Edge)
+                            // bit 5 is unused
+                            // WGM13:12=11 for for Fast PWM Mode (WGM11:11=00 in TCCR1A)
+                            // CS12:10=001 for divide by 1 prescaler
+      TCCR1C = 0b00000000;  // FOC1A=0 (no Force Output Compare for Channel A)
+                            // FOC1B=0 (no Force Output Compare for Channel B)
+                            // bits 5:0 are unused
+
+    }
+    void play(float centralTone, float binauralBeat) {
+      int lowFreqPeriod = int(15625.0/(centralTone - binauralBeat/2) + 0.5); // on OC2A (PB3, pin 11)
+      float actualLowFreq = 15625.0/lowFreqPeriod;
+      float actualHighFreq = actualLowFreq + binauralBeat;
+      int highFreqPeriod = int(4000000.0/actualHighFreq + 0.5);
+      
+      OCR2A = lowFreqPeriod - 1;  // on OC2A (PB3, pin 11)
+      OCR1A = highFreqPeriod - 1; // on OC0A (PB1, pin 9)
+      
+      DDRB = 0b00001010;   // set PB1,PB3 pins as outputs
+    }
+    void stop() {
+      DDRB = 0b00000000;   // set PB1,PB3 pins as inputs
+    }
+};
+
 #endif
 
 /***************************************************
@@ -99,8 +171,14 @@ class TonePair
   in many places.
 ***************************************************/
 
-#define rightEarPin 9 // Define pinout for left ear
+#ifdef USE_RAW_TIMERS
+// You must use 11 and 9 like this with Raw Timers!!
+#define rightEarPin 11 // Define pinout for right ear
+#define leftEarPin 9 // Define pinout for left ear
+#else
+#define rightEarPin 9 // Define pinout for right ear
 #define leftEarPin 10 // Define pinout for left ear
+#endif
 #define rightEyePin 5 // Define pinout for right eye
 #define leftEyePin 6 // Define pinout for left eye
 #define interruptPin 2 // the input pin where the pushbutton is connected.
