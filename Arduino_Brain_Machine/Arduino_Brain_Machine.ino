@@ -59,6 +59,10 @@
 // #define DEBUG
 // =========================================================================
 
+// By default, LEDs are connected to Supply (Common Anode)
+// Add an option to use LEDs connected to ground (Common Cathode)
+//#define LEDS_TO_GROUND
+
 #define rightEarPin 9 // Define pinout for left ear
 #define leftEarPin 10 // Define pinout for left ear
 #define rightEyePin 5 // Define pinout for right eye
@@ -66,10 +70,15 @@
 #define interruptPin 2 // the input pin where the pushbutton is connected.
 #define potPin A0 // user input potentiometer (session selection)
 
-// Common anode. 255 is off
 int LEDIntensity = 127;
+#ifndef LEDS_TO_GROUND
+// Common anode. 255 is off
 #define LED_ON (255-LEDIntensity)
 #define LED_OFF 255
+#else
+#define LED_ON (LEDIntensity)
+#define LED_OFF 0
+#endif
 
 // ====== Altman's "chunky" frequency-hopping method =======
 
@@ -617,5 +626,3 @@ bool do_chunky_brainwave_element(int index) {
       return true;      // end of table
   }
 }
-
-
