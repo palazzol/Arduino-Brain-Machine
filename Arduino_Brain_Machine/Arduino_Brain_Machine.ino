@@ -47,6 +47,20 @@
 #include <avr/sleep.h> // A library to control the sleep mode
 #include <avr/power.h> // A library to control power
 
+// =============== uncomment for serial debugging ===============
+// #define DEBUG
+// =========================================================================
+
+// By default, LEDs are connected to Supply (Common Anode)
+// Add an option to use LEDs connected to ground (Common Cathode)
+//#define LEDS_TO_GROUND
+
+// By default, use Tone library.  If you want more accuracy, use this define.
+// Forces the use of certain pins for the audio, and not portable.
+//#define USE_RAW_TIMERS
+
+#ifndef USE_RAW_TIMERS
+
 // This class abstracts the connection to the Tone library
 // We may want to control the timers directly in the future
 // for more accuracy (and less portability)
@@ -74,20 +88,16 @@ class TonePair
     Tone leftEarTone;
 };
 
+#else
+
+#endif
+
 /***************************************************
   GLOBALS
   We isolate calls to pins with these globals so we can change
   which pin we'll use i one please, rather than having to search and replace
   in many places.
 ***************************************************/
-
-// =============== uncomment for serial debugging ===============
-// #define DEBUG
-// =========================================================================
-
-// By default, LEDs are connected to Supply (Common Anode)
-// Add an option to use LEDs connected to ground (Common Cathode)
-//#define LEDS_TO_GROUND
 
 #define rightEarPin 9 // Define pinout for left ear
 #define leftEarPin 10 // Define pinout for left ear
