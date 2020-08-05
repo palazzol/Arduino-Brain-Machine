@@ -147,10 +147,10 @@ class TonePair
 
     }
     void play(float centralTone, float binauralBeat) {
-      int lowFreqPeriod = int(15625.0/(centralTone - binauralBeat/2) + 0.5); // on OC2A (PB3, pin 11)
-      float actualLowFreq = 15625.0/lowFreqPeriod;
+      int lowFreqPeriod = int(31250.0/(centralTone - binauralBeat/2) + 0.5); // on OC2A (PB3, pin 11)
+      float actualLowFreq = 31250.0/lowFreqPeriod;
       float actualHighFreq = actualLowFreq + binauralBeat;
-      int highFreqPeriod = int(4000000.0/actualHighFreq + 0.5);
+      int highFreqPeriod = int(8000000.0/actualHighFreq + 0.5);
       
       OCR2A = lowFreqPeriod - 1;  // on OC2A (PB3, pin 11)
       OCR1A = highFreqPeriod - 1; // on OC0A (PB1, pin 9)
