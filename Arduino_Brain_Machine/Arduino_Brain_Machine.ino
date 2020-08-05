@@ -47,6 +47,8 @@
 #include <avr/sleep.h> // A library to control the sleep mode
 #include <avr/power.h> // A library to control power
 
+#include <EEPROM.h>
+
 // =============== uncomment for serial debugging ===============
 // #define DEBUG
 // =========================================================================
@@ -184,7 +186,7 @@ class TonePair
 #define interruptPin 2 // the input pin where the pushbutton is connected.
 #define potPin A0 // user input potentiometer (session selection)
 
-int LEDIntensity = 127;
+int LEDIntensity = 127; // Will be overridden by EEPROM
 #ifndef LEDS_TO_GROUND
 // Common anode. 255 is off
 #define LED_ON (255-LEDIntensity)
@@ -448,6 +450,7 @@ void setup()  {
   pinMode(leftEyePin, OUTPUT); // Pin output at leftEye
   pinMode(interruptPin, INPUT_PULLUP); // User input (push button)
   pinMode(potPin, INPUT); // User input (potentiometer)
+  LEDIntensity = EEPROM.read(0);
   set_sleep_mode(SLEEP_MODE_PWR_DOWN);
   attachInterrupt(digitalPinToInterrupt(interruptPin), buttonInterrupt, FALLING);
 }
@@ -536,6 +539,7 @@ void loop() {
       setLEDs(LED_ON);
       delay(50);
     }
+    EEPROM.update(0, LEDIntensity);
 #ifdef DEBUG
     Serial.print("Set intensity (0-255) to ");
     Serial.println(LEDIntensity);
