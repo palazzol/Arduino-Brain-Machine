@@ -629,7 +629,7 @@ bool delay_decimiliseconds(unsigned long int dms) {
 
 bool blink_LEDs( int duration, int onTime, int offTime) {
   // returns true if interrupt button got us out of STATE_RUNNING
-  unsigned long int longDuration = duration*100;
+  unsigned long int longDuration = duration*100L;
   for (int i = 0; i < (longDuration / (onTime + offTime)); i++) {
     analogWrite(rightEyePin, LED_ON);
     analogWrite(leftEyePin, LED_ON);
@@ -649,7 +649,7 @@ bool blink_LEDs( int duration, int onTime, int offTime) {
 
 bool alt_blink_LEDs( int duration, int onTime, int offTime) {
   // returns true if interrupt button got us out of STATE_RUNNING
-  unsigned long int longDuration = duration*100;
+  unsigned long int longDuration = duration*100L;
   for (int i = 0; i < (longDuration / (onTime + offTime)); i++) {
     analogWrite(rightEyePin, LED_ON);
     analogWrite(leftEyePin, LED_OFF);
@@ -683,28 +683,28 @@ bool do_chunky_brainwave_element(int index) {
       tonePair.play(centralTone, binauralBeat[0]);
       //  Generate binaural beat of 14.4Hz
       //  delay for the time specified in the table while blinking the LEDs at the correct rate
-      return blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 347, 347 );
+      return blink_LEDs( pgm_read_word(&chunkybrainwaveTab[index].bwDuration), 347, 347 );
 
     case 'B':
       // Beta - with alternating blinks
       tonePair.play(centralTone, binauralBeat[0]);
       //  Generate binaural beat of 14.4Hz
       //  delay for the time specified in the table while blinking the LEDs at the correct rate
-      return alt_blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 347, 347 );
+      return alt_blink_LEDs( pgm_read_word(&chunkybrainwaveTab[index].bwDuration), 347, 347 );
 
     case 'a':
       // Alpha
       tonePair.play(centralTone, binauralBeat[1]);
       // Generates a binaural beat of 11.1Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
-      return blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 451, 450 );
+      return blink_LEDs( pgm_read_word(&chunkybrainwaveTab[index].bwDuration), 451, 450 );
 
     case 'A':
       // Alpha
       tonePair.play(centralTone, binauralBeat[1]);
       // Generates a binaural beat of 11.1Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
-      return alt_blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 451, 450 );
+      return alt_blink_LEDs( pgm_read_word(&chunkybrainwaveTab[index].bwDuration), 451, 450 );
 
     case 't':
       // Theta
@@ -713,7 +713,7 @@ bool do_chunky_brainwave_element(int index) {
       tonePair.play(centralTone, binauralBeat[2]);
       // Generates a binaural beat of 6.0Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
-      return blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 835, 835 );
+      return blink_LEDs( pgm_read_word(&chunkybrainwaveTab[index].bwDuration), 835, 835 );
 
     case 'T':
       // Theta
@@ -722,35 +722,35 @@ bool do_chunky_brainwave_element(int index) {
       tonePair.play(centralTone, binauralBeat[2]);
       // Generates a binaural beat of 6.0Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
-      return alt_blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 835, 835 );
+      return alt_blink_LEDs( pgm_read_word(&chunkybrainwaveTab[index].bwDuration), 835, 835 );
 
     case 'd':
       // Delta
       tonePair.play(centralTone, binauralBeat[3]);
       // Generates a binaural beat of 2.2Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
-      return blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 2253, 2253 );
+      return blink_LEDs( pgm_read_word(&chunkybrainwaveTab[index].bwDuration), 2253, 2253 );
 
     case 'D':
       // Delta
       tonePair.play(centralTone, binauralBeat[3]);
       // Generates a binaural beat of 2.2Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
-      return alt_blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 2253, 2253 );
+      return alt_blink_LEDs( pgm_read_word(&chunkybrainwaveTab[index].bwDuration), 2253, 2253 );
 
     case 'g':
       // Gamma
       tonePair.play(centralTone, binauralBeat[4]);
       // Generates a binaural beat of 40.4Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
-      return blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 124, 124 );
+      return blink_LEDs( pgm_read_word(&chunkybrainwaveTab[index].bwDuration), 124, 124 );
 
     case 'G':
       // Gamma
       tonePair.play(centralTone, binauralBeat[4]);
       // Generates a binaural beat of 40.4Hz
       // delay for the time specified in the table while blinking the LEDs at the correct rate
-      return alt_blink_LEDs( pgm_read_dword(&chunkybrainwaveTab[index].bwDuration), 124, 124 );
+      return alt_blink_LEDs( pgm_read_word(&chunkybrainwaveTab[index].bwDuration), 124, 124 );
 
     // this should never be executed, since we catch the end of table in the main loop
     default:
