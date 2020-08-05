@@ -32,12 +32,12 @@
   we're taking the same approach.  This is accomplished by using the library for PROGMEM.
   (This is used below in the definition for the chunkybrainwaveTab).  Since the
   C compiler assumes that constants are in RAM, rather than in program memory, when accessing
-  the chunkybrainwaveTab, we need to use the pgm_read_byte() and pgm_read_dword() macros, and we need
+  the chunkybrainwaveTab, we need to use the pgm_read_byte() and pgm_read_word() macros, and we need
   to use the brainwveTab as an address, i.e., precede it with "&".  For example, to access
   chunkybrainwaveTab[3].bwType, which is a byte, this is how to do it:
    pgm_read_byte( &chunkybrainwaveTab[3].bwType );
-  And to access chunkybrainwaveTab[3].bwDuration, which is a double-word, this is how to do it:
-   pgm_read_dword( &chunkybrainwaveTab[3].bwDuration );
+  And to access chunkybrainwaveTab[3].bwDuration, which is a word, this is how to do it:
+   pgm_read_word( &chunkybrainwaveTab[3].bwDuration );
  ***************************************************/
 
 /***************************************************
@@ -186,7 +186,8 @@ class TonePair
 #define interruptPin 2 // the input pin where the pushbutton is connected.
 #define potPin A0 // user input potentiometer (session selection)
 
-int LEDIntensity = 127; // Will be overridden by EEPROM
+int LEDIntensity = 127; // Default value, will be overridden by valid value in EEPROM
+
 #ifndef LEDS_TO_GROUND
 // Common anode. 255 is off
 #define LED_ON (255-LEDIntensity)
@@ -213,71 +214,71 @@ int LEDIntensity = 127; // Will be overridden by EEPROM
 struct chunkyBrainwaveElement {
   char bwType;  // 'a' for Alpha, 'b' for Beta, 't' for Theta,'d' for Delta or 'g' for gamma ('0' signifies last entry in table
   // A, B, T, D and G offer alternating flash instead of concurrent flash.
-  unsigned long int bwDuration;  // Duration of this Brainwave Type (divide by 10,000 to get seconds)
+  int bwDuration;  // Duration of this Brainwave Type (divide by 100 to get seconds)
 };
 
 const chunkyBrainwaveElement chunkybrainwaveTab[] PROGMEM = {
-  { 'b', 600000 },
-  { 'a', 100000 },
-  { 'b', 200000 },
-  { 'a', 150000 },
-  { 'b', 150000 },
-  { 'a', 200000 },
-  { 'b', 100000 },
-  { 'a', 300000 },
-  { 'b', 50000 },
-  { 'a', 600000 },
-  { 't', 100000 },
-  { 'A', 300000 },
-  { 't', 200000 },
-  { 'a', 200000 },
-  { 't', 300000 },
-  { 'A', 150000 },
-  { 't', 600000 },
-  { 'a', 100000 },
-  { 'b', 10000 },
-  { 'a', 50000 },
-  { 'T', 550000 },
-  { 'd', 10000 },
-  { 't', 450000 },
-  { 'd', 50000 },
-  { 'T', 350000 },
-  { 'd', 100000 },
-  { 't', 250000 },
-  { 'd', 150000 },
-  { 'g', 10000 },
-  { 'T', 50000 },
-  { 'g', 10000 },
-  { 'd', 300000 },
-  { 'g', 50000 },
-  { 'd', 600000 },
-  { 'g', 100000 },
-  { 'D', 300000 },
-  { 'g', 50000 },
-  { 'd', 150000 },
-  { 'g', 10000 },
-  { 't', 100000 },
-  { 'D', 100000 },
-  { 't', 200000 },
-  { 'a', 10000 },
-  { 'd', 100000 },
-  { 't', 300000 },
-  { 'a', 50000 },
-  { 'B', 10000 },
-  { 'a', 100000 },
-  { 't', 220000 },
-  { 'A', 150000 },
-  { 'b', 10000 },
-  { 'a', 300000 },
-  { 'b', 50000 },
-  { 'a', 200000 },
-  { 'B', 120000 },
-  { 'a', 150000 },
-  { 'b', 200000 },
-  { 'a', 100000 },
-  { 'b', 250000 },
-  { 'A', 50000 },
-  { 'b', 600000 },
+  { 'b', 6000 },
+  { 'a', 1000 },
+  { 'b', 2000 },
+  { 'a', 1500 },
+  { 'b', 1500 },
+  { 'a', 2000 },
+  { 'b', 1000 },
+  { 'a', 3000 },
+  { 'b',  500 },
+  { 'a', 6000 },
+  { 't', 1000 },
+  { 'A', 3000 },
+  { 't', 2000 },
+  { 'a', 2000 },
+  { 't', 3000 },
+  { 'A', 1500 },
+  { 't', 6000 },
+  { 'a', 1000 },
+  { 'b',  100 },
+  { 'a',  500 },
+  { 'T', 5500 },
+  { 'd',  100 },
+  { 't', 4500 },
+  { 'd',  500 },
+  { 'T', 3500 },
+  { 'd', 1000 },
+  { 't', 2500 },
+  { 'd', 1500 },
+  { 'g',  100 },
+  { 'T',  500 },
+  { 'g',  100 },
+  { 'd', 3000 },
+  { 'g',  500 },
+  { 'd', 6000 },
+  { 'g', 1000 },
+  { 'D', 3000 },
+  { 'g',  500 },
+  { 'd', 1500 },
+  { 'g',  100 },
+  { 't', 1000 },
+  { 'D', 1000 },
+  { 't', 2000 },
+  { 'a',  100 },
+  { 'd', 1000 },
+  { 't', 3000 },
+  { 'a',  500 },
+  { 'B',  100 },
+  { 'a', 1000 },
+  { 't', 2200 },
+  { 'A', 1500 },
+  { 'b',  100 },
+  { 'a', 3000 },
+  { 'b',  500 },
+  { 'a', 2000 },
+  { 'B', 1200 },
+  { 'a', 1500 },
+  { 'b', 2000 },
+  { 'a', 1000 },
+  { 'b', 2500 },
+  { 'A',  500 },
+  { 'b', 6000 },
   { '0', 0 }
 };
 
@@ -427,6 +428,30 @@ void buttonInterrupt()
   }
 }
 
+void init_from_EEPROM()
+{
+  // Format of EEPROM
+  // 0/1 0x1234 - Magic Number
+  // 2 - byte version
+  // 3 - LEDIntensity
+  
+  int header = EEPROM.read(0);
+  header = (header << 8) + EEPROM.read(1);
+  
+  if (header != 0x1234) // Not initialized
+  {
+      EEPROM.write(0, 0x12);
+      EEPROM.write(1, 0x34);
+      EEPROM.write(2, 0x00);
+      EEPROM.write(3, LEDIntensity);
+  }
+  byte version = EEPROM.read(2);
+  if (version == 0)
+  {
+      // This is an int, but I think 255 is the max value
+      LEDIntensity = EEPROM.read(3);
+  }
+}
 
 /***************************************************
   SETUP defines pins and tones.
@@ -450,7 +475,7 @@ void setup()  {
   pinMode(leftEyePin, OUTPUT); // Pin output at leftEye
   pinMode(interruptPin, INPUT_PULLUP); // User input (push button)
   pinMode(potPin, INPUT); // User input (potentiometer)
-  LEDIntensity = EEPROM.read(0);
+  init_from_EEPROM();
   set_sleep_mode(SLEEP_MODE_PWR_DOWN);
   attachInterrupt(digitalPinToInterrupt(interruptPin), buttonInterrupt, FALLING);
 }
@@ -602,9 +627,10 @@ bool delay_decimiliseconds(unsigned long int dms) {
   for common anode, so "on" = LOW and "off" = HIGH.
 ***************************************************/
 
-bool blink_LEDs( unsigned long int duration, unsigned long int onTime, unsigned long int offTime) {
+bool blink_LEDs( int duration, int onTime, int offTime) {
   // returns true if interrupt button got us out of STATE_RUNNING
-  for (int i = 0; i < (duration / (onTime + offTime)); i++) {
+  unsigned long int longDuration = duration*100;
+  for (int i = 0; i < (longDuration / (onTime + offTime)); i++) {
     analogWrite(rightEyePin, LED_ON);
     analogWrite(leftEyePin, LED_ON);
     // turn on LEDs
@@ -621,9 +647,10 @@ bool blink_LEDs( unsigned long int duration, unsigned long int onTime, unsigned 
   return false;
 }
 
-bool alt_blink_LEDs( unsigned long int duration, unsigned long int onTime, unsigned long int offTime) {
+bool alt_blink_LEDs( int duration, int onTime, int offTime) {
   // returns true if interrupt button got us out of STATE_RUNNING
-  for (int i = 0; i < (duration / (onTime + offTime)); i++) {
+  unsigned long int longDuration = duration*100;
+  for (int i = 0; i < (longDuration / (onTime + offTime)); i++) {
     analogWrite(rightEyePin, LED_ON);
     analogWrite(leftEyePin, LED_OFF);
     if (delay_decimiliseconds(onTime)) {  //   for onTime
