@@ -550,7 +550,7 @@ void loop() {
       setLEDs(LED_ON);
       delay(50);
     }
-    EEPROM.update(0, LEDIntensity);
+    EEPROM.update(3, LEDIntensity);
 #ifdef DEBUG
     Serial.print("Set intensity (0-255) to ");
     Serial.println(LEDIntensity);
