@@ -43,9 +43,7 @@
 /***************************************************
   LIBRARIES - Define necessary libraries here.
 ***************************************************/
-#if 0
 #include <avr/pgmspace.h> // for arrays - PROGMEM
-#endif 
 #include <avr/sleep.h> // A library to control the sleep mode
 #include <avr/power.h> // A library to control power
 
@@ -62,7 +60,7 @@
 // By default, use Tone library.  Use this define if you want the
 // beat frequency to be exact.  This forces the use of certain pins 
 // for the audio, and is not portable.
-//#define USE_RAW_TIMERS
+#define USE_RAW_TIMERS
 
 #ifndef USE_RAW_TIMERS
 
@@ -244,24 +242,24 @@ struct brainwaveElement {
 #define CREAMY      { 2, -1.0 }  // ====== Mindplace.com "creamy" frequency-transition method =======
 #define LEDS_ALT    { 3, -1.0 }
 
-const brainwaveElement proteusGoodMorning04[] = {
+const brainwaveElement proteusGoodMorning04[] PROGMEM = {
   CREAMY,
   {0, 8}, {120, 16}, {60, 25}, {60, 25}, {60, 20}, {60, 28}, {60, 20}, {60, 28},
   {60, 20}, {60, 28}, {60, 20}, {60, 28}, {60, 20}, {60, 8}, {60, 20}, {0, 0}
 };
 
-const brainwaveElement proteusGoodNight43[] = {
+const brainwaveElement proteusGoodNight43[] PROGMEM = {
   CREAMY,
   {0, 9}, {280, 6}, {300, 3}, {200, 5}, {100, 3}, {20, 2}, {0, 0}
 };
 
-const brainwaveElement proteusVisuals22[] = {
+const brainwaveElement proteusVisuals22[] PROGMEM = {
   CREAMY,
   {0, 8}, {60, 10}, {60, 16}, {60, 20}, {0, 16}, {60, 24}, {0, 20}, {120, 28}, {60, 24},
   {60, 30}, {300, 24}, {30, 12}, {30, 24}, {30, 16}, {120, 30}, {150, 8}, {60, 8}, {0, 0}
 };
 
-const brainwaveElement proteusVisuals33[] = {
+const brainwaveElement proteusVisuals33[] PROGMEM = {
   CREAMY,
   {0, 4}, {75, 10}, {75, 5}, {0, 20}, {75, 5}, {75, 15},
   {0, 4}, {75, 10}, {75, 5}, {0, 20}, {75, 5}, {75, 15},
@@ -270,7 +268,7 @@ const brainwaveElement proteusVisuals33[] = {
 };
 
 
-const brainwaveElement proteusMeditation10[] = {
+const brainwaveElement proteusMeditation10[] PROGMEM = {
   CREAMY,
   {0, 16}, {60, 16}, {240, 4}, {360, 4}, {120, 2}, {1080, 2}, {60, 8}, {60, 24},
   {120, 24}, {0, 0}
@@ -287,7 +285,7 @@ const brainwaveElement proteusMeditation10[] = {
   pulse in some Delta (creativity)
   and then reverse the above to come up refreshed
 ***************************************************/
-const brainwaveElement originalArduino[] = {
+const brainwaveElement originalArduino[] PROGMEM = {
   CHUNKY,
   { 60, BETA_HZ }, { 10, ALPHA_HZ }, { 20, BETA_HZ }, { 15, ALPHA_HZ }, { 15, BETA_HZ },
   { 20, ALPHA_HZ }, { 10, BETA_HZ }, { 30, ALPHA_HZ }, { 5, BETA_HZ }, { 60, ALPHA_HZ }, { 10, THETA_HZ },
@@ -331,7 +329,7 @@ int currentSession;
 
 #define NUM_BRAINWAVE_SESSIONS 5
 
-const brainwaveElement *brainwaveSessions[NUM_BRAINWAVE_SESSIONS] = {
+const brainwaveElement * const brainwaveSessions[] PROGMEM = {
   proteusGoodMorning04, proteusGoodNight43,
   proteusVisuals33, proteusMeditation10,
   originalArduino
@@ -441,6 +439,16 @@ void setup()  {
   attachInterrupt(digitalPinToInterrupt(interruptPin), buttonInterrupt, FALLING);
 }
 
+void readProgramData(PGM_VOID_P session_ptr, int j, int *duration, float *frequency)
+{
+    // NOTE: these depend on the size and structure of brainwaveElement
+    // duration is first, 2 bytes
+    *duration = pgm_read_word( session_ptr + j*sizeof(brainwaveElement)  );
+    // frequency is second, 4 bytes
+    long int f1 = pgm_read_dword( session_ptr + j*sizeof(brainwaveElement) + sizeof(brainwaveElement::duration) );
+    // force this to be treated as a float
+    *frequency = *(float *)&f1;
+}
 
 /***************************************************
    MAIN LOOP - tells our program what to do.
@@ -466,54 +474,57 @@ void loop() {
   unsigned long startedAt = millis();
   j = 0;
   if (currentSession < NUM_BRAINWAVE_SESSIONS) {
-    brainwaveElement *session = brainwaveSessions[currentSession];
+    PGM_VOID_P session_ptr = pgm_read_word( &brainwaveSessions[currentSession] );
     float currentFrequency = 0.0;
     bool do_chunky = false;
     bool led_alt = false;
-    while (session[j].frequency != 0.0) { // 0.0 signifies end of table
+    int duration;
+    float frequency;
+    readProgramData(session_ptr, j, &duration, &frequency);
+    while (frequency != 0.0) { // 0.0 signifies end of table
 #ifdef DEBUG
       Serial.print(j);
       Serial.print(' ');
-      if (session[j].frequency == -1.0) {
+      if (frequency == -1.0) {
         // Special identifier
-        if (session[j].duration == 1)
+        if (duration == 1)
           Serial.print("CHUNKY");
-        if (session[j].duration == 2)
+        if (duration == 2)
           Serial.print("CREAMY");
-        if (session[j].duration == 3)
+        if (duration == 3)
           Serial.print("ALT_LEDS");
       } else {
         if (!do_chunky) {
           Serial.print(currentFrequency);
           Serial.print(" -> ");
-          Serial.print(session[j].frequency);
+          Serial.print(frequency);
           Serial.print(" in ");
         } else {
-          Serial.print(session[j].frequency);
+          Serial.print(frequency);
           Serial.print(" for ");          
         }
-        Serial.print(session[j].duration);
+        Serial.print(duration);
       }
       Serial.print(" @");
       Serial.println(millis() - startedAt);
 #endif
-      if (session[j].frequency == -1.0) {
+      if (frequency == -1.0) {
         // Special identifier
-        if (session[j].duration == 1)
+        if (duration == 1)
           do_chunky = true;
-        if (session[j].duration == 2)
+        if (duration == 2)
           do_chunky = false;
-        if (session[j].duration == 3)
+        if (duration == 3)
           led_alt = true;
-      } else if (session[j].duration) {
+      } else if (duration) {
         float elapsedDms = 0; // decimilliseconds since element's start
-        float totalDms = session[j].duration * 10000.0;
+        float totalDms = duration * 10000.0;
         while (elapsedDms < totalDms) {
           float freq;
           if (!do_chunky)
-            freq = currentFrequency + (session[j].frequency - currentFrequency) * (elapsedDms / totalDms);
+            freq = currentFrequency + (frequency - currentFrequency) * (elapsedDms / totalDms);
           else
-            freq = session[j].frequency;
+            freq = frequency;
           tonePair.play(centralTone, freq);
           unsigned long halfWaveLength = round(5000.0 / freq);
           if (!led_alt)
@@ -541,8 +552,9 @@ void loop() {
       if (machineState != STATE_RUNNING) {
         break; // interrupt button was pressed
       };
-      currentFrequency = session[j].frequency;
+      currentFrequency = frequency;
       j++;
+      readProgramData(session_ptr, j, &duration, &frequency);
     };
   } else if (currentSession == SESSION_SETUP) {
     while (machineState == STATE_RUNNING) {
