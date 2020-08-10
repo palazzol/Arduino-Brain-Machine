@@ -17,7 +17,7 @@
   by - Mitch Altman - 19-Mar-07 as featured in Make Magazine 10.
   http://makezine.com/10/brainwave/
 
-  See notes in code below for how I adapted Mitch Altman's version for Arduino
+  See notes in code belosew for how I adapted Mitch Altman's version for Arduino
 
   The sleep coding comes partially from here:
   http://www.arduino.cc/playground/Learning/ArduinoSleepCode
@@ -108,7 +108,11 @@ class TonePair
         Serial.println("Error: Must use pins 11 and 9 to use Raw Timers!");
 #endif
         return -1;
-      }     
+      }
+
+      // Using Timer2 and Timer1, so as not to impact Timer0
+      // which is used by Arduino for other timing functions
+      
       DDRB = 0b00000000;   // set PB1,PB3 pins as outputs
       PORTB = 0x00;        // all PORTB output pins Off
       
@@ -117,7 +121,7 @@ class TonePair
       //   8-bit Timer2 OC2A (PB3, pin 11) is set up for Fast PWM mode, toggling output on each compare
       //   Fclk = Clock = 16MHz
       //   Prescale = 256
-      //   F = Fclk / (2 * Prescale * (1 + OCR2A) ) = 200.321Hz
+      //   F = Fclk / (2 * Prescale * (1 + OCR2A) )
       TCCR2A = 0b01000011;  // COM0A1:0=01 to toggle OC0A on Compare Match
                             // COM0B1:0=00 to disconnect OC0B
                             // bits 3:2 are unused
@@ -149,17 +153,31 @@ class TonePair
 
     }
     void play(float centralTone, float binauralBeat) {
-      int lowFreqPeriod = int(31250.0/(centralTone - binauralBeat/2) + 0.5); // on OC2A (PB3, pin 11)
-      float actualLowFreq = 31250.0/lowFreqPeriod;
-      float actualHighFreq = actualLowFreq + binauralBeat;
+      
+      // Strategy: 
+      // Set the frequency for the lower tone based to (central-binaural/2)
+      // using Timer2.  This is an 8-bit timer, so it may not be exact
+      // Then, get the actual frequency of the lower tone, and use it compute the upper
+      // frequency as upper = lower + binaural.  Timer1 is 16-bits, and so the beat
+      // frequency will be very accurate even if the absolute frequency if the pair
+      // is less accurate.
+
+      // 31250 = 16Mhz Clk / (2 * 256)
+      int lowFreqPeriod = int(31250.0/(centralTone - binauralBeat/2) + 0.5);
+      float actualLowFreq = 31250.0/lowFreqPeriod;  // retrieve the value used
+      float actualHighFreq = actualLowFreq + binauralBeat; // calculate the upper frequency
+      // 8000000 = 16Mhz / (2 * 1)
       int highFreqPeriod = int(8000000.0/actualHighFreq + 0.5);
-      
+
+      // set the frequencies
       OCR2A = lowFreqPeriod - 1;  // on OC2A (PB3, pin 11)
-      OCR1A = highFreqPeriod - 1; // on OC0A (PB1, pin 9)
-      
+      OCR1A = highFreqPeriod - 1; // on OC1A (PB1, pin 9)
+
+      // enable the pins
       DDRB = 0b00001010;   // set PB1,PB3 pins as outputs
     }
     void stop() {
+      // disable the pins
       DDRB = 0b00000000;   // set PB1,PB3 pins as inputs
     }
 };
@@ -238,38 +256,53 @@ struct brainwaveElement {
   float frequency; // Hz
 };
 
-#define CHUNKY      { 1, -1.0 }  // ====== Altman's "chunky" frequency-hopping method =======
-#define CREAMY      { 2, -1.0 }  // ====== Mindplace.com "creamy" frequency-transition method =======
-#define LEDS_ALT    { 3, -1.0 }
+// Internal use
+#define MODE_SPECIAL_FREQ -1.0
+#define MODE_CHUNKY 1
+#define MODE_CREAMY 2
+#define MODE_ALT_LEDS_BLINK 3
 
+///////////////////////////////////////////////////////////////////
+// These tags can be used to control the interpretation of elements
+///////////////////////////////////////////////////////////////////
+
+// These two tags affect all subsequent elements
+// "Chunky" means each element sets the frequency and duration directly, and immediately
+// "Creamy" means each element is a linear ramp up to the frequency over the duration
+#define TAG_FORMAT_CHUNKY   { MODE_CHUNKY, MODE_SPECIAL_FREQ }  // ====== Altman's "chunky" frequency-hopping method =======
+#define TAG_FORMAT_CREAMY   { MODE_CREAMY, MODE_SPECIAL_FREQ }  // ====== Mindplace.com "creamy" frequency-transition method =======
+// This tag only affects the next element in the table
+#define TAG_ALT_BLINK       { MODE_ALT_LEDS_BLINK, MODE_SPECIAL_FREQ }
+
+// Note: All of these tables and the index are in Program Memory, to save RAM
+// This requires special indexing to read the table values
 const brainwaveElement proteusGoodMorning04[] PROGMEM = {
-  CREAMY,
+  TAG_FORMAT_CREAMY,
   {0, 8}, {120, 16}, {60, 25}, {60, 25}, {60, 20}, {60, 28}, {60, 20}, {60, 28},
   {60, 20}, {60, 28}, {60, 20}, {60, 28}, {60, 20}, {60, 8}, {60, 20}, {0, 0}
 };
 
 const brainwaveElement proteusGoodNight43[] PROGMEM = {
-  CREAMY,
+  TAG_FORMAT_CREAMY,
   {0, 9}, {280, 6}, {300, 3}, {200, 5}, {100, 3}, {20, 2}, {0, 0}
 };
 
 const brainwaveElement proteusVisuals22[] PROGMEM = {
-  CREAMY,
+  TAG_FORMAT_CREAMY,
   {0, 8}, {60, 10}, {60, 16}, {60, 20}, {0, 16}, {60, 24}, {0, 20}, {120, 28}, {60, 24},
   {60, 30}, {300, 24}, {30, 12}, {30, 24}, {30, 16}, {120, 30}, {150, 8}, {60, 8}, {0, 0}
 };
 
 const brainwaveElement proteusVisuals33[] PROGMEM = {
-  CREAMY,
+  TAG_FORMAT_CREAMY,
   {0, 4}, {75, 10}, {75, 5}, {0, 20}, {75, 5}, {75, 15},
   {0, 4}, {75, 10}, {75, 5}, {0, 20}, {75, 5}, {75, 15},
   {0, 4}, {75, 10}, {75, 5}, {0, 20}, {75, 5}, {75, 15},
   {0, 4}, {75, 10}, {75, 5}, {0, 20}, {75, 5}, {75, 15}, {0, 0}
 };
 
-
 const brainwaveElement proteusMeditation10[] PROGMEM = {
-  CREAMY,
+  TAG_FORMAT_CREAMY,
   {0, 16}, {60, 16}, {240, 4}, {360, 4}, {120, 2}, {1080, 2}, {60, 8}, {60, 24},
   {120, 24}, {0, 0}
 };
@@ -286,30 +319,30 @@ const brainwaveElement proteusMeditation10[] PROGMEM = {
   and then reverse the above to come up refreshed
 ***************************************************/
 const brainwaveElement originalArduino[] PROGMEM = {
-  CHUNKY,
+  TAG_FORMAT_CHUNKY,
   { 60, BETA_HZ }, { 10, ALPHA_HZ }, { 20, BETA_HZ }, { 15, ALPHA_HZ }, { 15, BETA_HZ },
   { 20, ALPHA_HZ }, { 10, BETA_HZ }, { 30, ALPHA_HZ }, { 5, BETA_HZ }, { 60, ALPHA_HZ }, { 10, THETA_HZ },
-  LEDS_ALT, { 30, ALPHA_HZ },
+  TAG_ALT_BLINK, { 30, ALPHA_HZ },
   { 20, THETA_HZ }, { 20, ALPHA_HZ }, { 30, THETA_HZ },
-  LEDS_ALT, { 15, ALPHA_HZ }, 
+  TAG_ALT_BLINK, { 15, ALPHA_HZ }, 
   { 60, THETA_HZ }, { 10, ALPHA_HZ }, { 1, BETA_HZ }, { 5, ALPHA_HZ },
-  LEDS_ALT, { 55, THETA_HZ },
+  TAG_ALT_BLINK, { 55, THETA_HZ },
   { 1, DELTA_HZ }, { 45, THETA_HZ }, { 5, DELTA_HZ },
-  LEDS_ALT, { 35, THETA_HZ },
+  TAG_ALT_BLINK, { 35, THETA_HZ },
   { 10, DELTA_HZ }, { 25, THETA_HZ }, { 15, DELTA_HZ }, { 1, GAMMA_HZ },
-  LEDS_ALT, { 5, THETA_HZ },
+  TAG_ALT_BLINK, { 5, THETA_HZ },
   { 1, GAMMA_HZ }, { 30, DELTA_HZ }, { 5, GAMMA_HZ }, { 60, DELTA_HZ }, { 10, GAMMA_HZ },
-  LEDS_ALT, { 30, DELTA_HZ },
+  TAG_ALT_BLINK, { 30, DELTA_HZ },
   { 5, GAMMA_HZ }, { 15, DELTA_HZ }, { 1, GAMMA_HZ }, { 10, THETA_HZ },
-  LEDS_ALT, { 10, DELTA_HZ },
+  TAG_ALT_BLINK, { 10, DELTA_HZ },
   { 20, THETA_HZ }, { 1, ALPHA_HZ }, { 10, DELTA_HZ }, { 30, THETA_HZ }, { 5, ALPHA_HZ },
-  LEDS_ALT, { 1, BETA_HZ },
+  TAG_ALT_BLINK, { 1, BETA_HZ },
   { 10, ALPHA_HZ }, { 22, THETA_HZ },
-  LEDS_ALT, { 15, ALPHA_HZ },
+  TAG_ALT_BLINK, { 15, ALPHA_HZ },
   { 1, BETA_HZ }, { 30, ALPHA_HZ }, { 5, BETA_HZ }, { 20, ALPHA_HZ },
-  LEDS_ALT, { 12, BETA_HZ },
+  TAG_ALT_BLINK, { 12, BETA_HZ },
   { 15, ALPHA_HZ }, { 20, BETA_HZ }, { 10, ALPHA_HZ }, { 25, ALPHA_HZ },
-  LEDS_ALT, { 5, ALPHA_HZ },
+  TAG_ALT_BLINK, { 5, ALPHA_HZ },
   { 60, BETA_HZ }, { 0, 0 }
 };
 
@@ -360,6 +393,16 @@ int mapPot(int mapMin, int mapMax) {
 void setLEDs(int state) {
   analogWrite(rightEyePin, state);
   analogWrite(leftEyePin, state);
+}
+
+void setLEDPhase(int state, bool led_alt) {
+  if (led_alt) {
+    analogWrite(rightEyePin, state);
+    analogWrite(leftEyePin, !state);
+  } else {
+    analogWrite(rightEyePin, state);
+    analogWrite(leftEyePin, state);    
+  }
 }
 
 void blinkSessionSelection(int session) {
@@ -439,6 +482,7 @@ void setup()  {
   attachInterrupt(digitalPinToInterrupt(interruptPin), buttonInterrupt, FALLING);
 }
 
+// Get the current element information from program memory
 void readProgramData(PGM_VOID_P session_ptr, int j, int *duration, float *frequency)
 {
     // NOTE: these depend on the size and structure of brainwaveElement
@@ -474,10 +518,11 @@ void loop() {
   unsigned long startedAt = millis();
   j = 0;
   if (currentSession < NUM_BRAINWAVE_SESSIONS) {
+    // The session pointer points to the current session table in program memory
     PGM_VOID_P session_ptr = pgm_read_word( &brainwaveSessions[currentSession] );
-    float currentFrequency = 0.0;
+    float lastFrequency = 0.0;
     bool do_chunky = false;
-    bool led_alt = false;
+    bool alt_leds_blink = false;
     int duration;
     float frequency;
     readProgramData(session_ptr, j, &duration, &frequency);
@@ -485,14 +530,14 @@ void loop() {
 #ifdef DEBUG
       Serial.print(j);
       Serial.print(' ');
-      if (frequency == -1.0) {
+      if (frequency == MODE_SPECIAL_FREQ) {
         // Special identifier
-        if (duration == 1)
-          Serial.print("CHUNKY");
-        if (duration == 2)
-          Serial.print("CREAMY");
-        if (duration == 3)
-          Serial.print("ALT_LEDS");
+        if (duration == MODE_CHUNKY)
+          Serial.print("MODE_CHUNKY");
+        if (duration == MODE_CREAMY)
+          Serial.print("MODE_CREAMY");
+        if (duration == MODE_ALT_LEDS_BLINK)
+          Serial.print("MODE_ALT_LEDS_BLINK");
       } else {
         if (!do_chunky) {
           Serial.print(currentFrequency);
@@ -508,51 +553,41 @@ void loop() {
       Serial.print(" @");
       Serial.println(millis() - startedAt);
 #endif
-      if (frequency == -1.0) {
+      if (frequency == MODE_SPECIAL_FREQ) {
         // Special identifier
-        if (duration == 1)
+        if (duration == MODE_CHUNKY)
           do_chunky = true;
-        if (duration == 2)
+        if (duration == MODE_CREAMY)
           do_chunky = false;
-        if (duration == 3)
-          led_alt = true;
+        if (duration == MODE_ALT_LEDS_BLINK)
+          alt_leds_blink = true;
       } else if (duration) {
         float elapsedDms = 0; // decimilliseconds since element's start
         float totalDms = duration * 10000.0;
         while (elapsedDms < totalDms) {
-          float freq;
+          float intermediateFreq;
           if (!do_chunky)
-            freq = currentFrequency + (frequency - currentFrequency) * (elapsedDms / totalDms);
+            intermediateFreq = lastFrequency + (frequency - lastFrequency) * (elapsedDms / totalDms);
           else
-            freq = frequency;
-          tonePair.play(centralTone, freq);
-          unsigned long halfWaveLength = round(5000.0 / freq);
-          if (!led_alt)
-              setLEDs(LED_ON);
-          else {
-              analogWrite(rightEyePin, LED_ON);
-              analogWrite(leftEyePin, LED_OFF);
-          }
+            intermediateFreq = frequency;
+          tonePair.play(centralTone, intermediateFreq);
+          unsigned long halfWaveLength = round(5000.0 / intermediateFreq);
+          setLEDPhase(LED_ON, alt_leds_blink);
           if (delay_decimiliseconds(halfWaveLength)) {
             break;
           }
-          if (!led_alt)
-              setLEDs(LED_OFF);
-          else {
-              analogWrite(rightEyePin, LED_OFF);
-              analogWrite(leftEyePin, LED_ON);
-          }
+          setLEDPhase(LED_OFF, alt_leds_blink);
           if (delay_decimiliseconds(halfWaveLength)) {
             break;
           }
           elapsedDms += (2.0 * halfWaveLength);
         };
-        led_alt = false;
+        alt_leds_blink = false;
       };
       if (machineState != STATE_RUNNING) {
         break; // interrupt button was pressed
       };
-      currentFrequency = frequency;
+      lastFrequency = frequency;
       j++;
       readProgramData(session_ptr, j, &duration, &frequency);
     };
