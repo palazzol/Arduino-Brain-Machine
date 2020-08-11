@@ -163,11 +163,11 @@ class TonePair
       // is less accurate.
 
       // 31250 = 16Mhz Clk / (2 * 256)
-      int lowFreqPeriod = int(31250.0/(centralTone - binauralBeat/2) + 0.5);
-      float actualLowFreq = 31250.0/lowFreqPeriod;  // retrieve the value used
+      int lowFreqPeriod = int(F_CPU/2.0/256/(centralTone - binauralBeat/2) + 0.5);
+      float actualLowFreq = F_CPU/2.0/256/lowFreqPeriod;  // retrieve the value used
       float actualHighFreq = actualLowFreq + binauralBeat; // calculate the upper frequency
       // 8000000 = 16Mhz / (2 * 1)
-      int highFreqPeriod = int(8000000.0/actualHighFreq + 0.5);
+      int highFreqPeriod = int(F_CPU/2.0/actualHighFreq + 0.5);
 
       // set the frequencies
       OCR2A = lowFreqPeriod - 1;  // on OC2A (PB3, pin 11)
@@ -540,7 +540,7 @@ void loop() {
           Serial.print("MODE_ALT_LEDS_BLINK");
       } else {
         if (!do_chunky) {
-          Serial.print(currentFrequency);
+          Serial.print(lastFrequency);
           Serial.print(" -> ");
           Serial.print(frequency);
           Serial.print(" in ");
