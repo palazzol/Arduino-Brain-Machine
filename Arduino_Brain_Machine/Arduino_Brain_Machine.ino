@@ -483,15 +483,9 @@ void setup()  {
 }
 
 // Get the current element information from program memory
-void readProgramData(PGM_VOID_P session_ptr, int j, int *duration, float *frequency)
+void readBrainwaveElement(PGM_VOID_P session_ptr, int j, brainwaveElement *element)
 {
-    // NOTE: these depend on the size and structure of brainwaveElement
-    // duration is first, 2 bytes
-    *duration = pgm_read_word( session_ptr + j*sizeof(brainwaveElement)  );
-    // frequency is second, 4 bytes
-    long int f1 = pgm_read_dword( session_ptr + j*sizeof(brainwaveElement) + sizeof(brainwaveElement::duration) );
-    // force this to be treated as a float
-    *frequency = *(float *)&f1;
+    memcpy_P( element, session_ptr + j*sizeof(brainwaveElement), sizeof(brainwaveElement)  );
 }
 
 /***************************************************
@@ -523,53 +517,52 @@ void loop() {
     float lastFrequency = 0.0;
     bool do_chunky = false;
     bool alt_leds_blink = false;
-    int duration;
-    float frequency;
-    readProgramData(session_ptr, j, &duration, &frequency);
-    while (frequency != 0.0) { // 0.0 signifies end of table
+    brainwaveElement element;
+    readBrainwaveElement(session_ptr, j, &element);
+    while (element.frequency != 0.0) { // 0.0 signifies end of table
 #ifdef DEBUG
       Serial.print(j);
       Serial.print(' ');
-      if (frequency == MODE_SPECIAL_FREQ) {
+      if (element.frequency == MODE_SPECIAL_FREQ) {
         // Special identifier
-        if (duration == MODE_CHUNKY)
+        if (element.duration == MODE_CHUNKY)
           Serial.print("MODE_CHUNKY");
-        if (duration == MODE_CREAMY)
+        if (element.duration == MODE_CREAMY)
           Serial.print("MODE_CREAMY");
-        if (duration == MODE_ALT_LEDS_BLINK)
+        if (element.duration == MODE_ALT_LEDS_BLINK)
           Serial.print("MODE_ALT_LEDS_BLINK");
       } else {
         if (!do_chunky) {
           Serial.print(lastFrequency);
           Serial.print(" -> ");
-          Serial.print(frequency);
+          Serial.print(element.frequency);
           Serial.print(" in ");
         } else {
-          Serial.print(frequency);
+          Serial.print(element.frequency);
           Serial.print(" for ");          
         }
-        Serial.print(duration);
+        Serial.print(element.duration);
       }
       Serial.print(" @");
       Serial.println(millis() - startedAt);
 #endif
-      if (frequency == MODE_SPECIAL_FREQ) {
+      if (element.frequency == MODE_SPECIAL_FREQ) {
         // Special identifier
-        if (duration == MODE_CHUNKY)
+        if (element.duration == MODE_CHUNKY)
           do_chunky = true;
-        if (duration == MODE_CREAMY)
+        if (element.duration == MODE_CREAMY)
           do_chunky = false;
-        if (duration == MODE_ALT_LEDS_BLINK)
+        if (element.duration == MODE_ALT_LEDS_BLINK)
           alt_leds_blink = true;
-      } else if (duration) {
+      } else if (element.duration) {
         float elapsedDms = 0; // decimilliseconds since element's start
-        float totalDms = duration * 10000.0;
+        float totalDms = element.duration * 10000.0;
         while (elapsedDms < totalDms) {
           float intermediateFreq;
           if (!do_chunky)
-            intermediateFreq = lastFrequency + (frequency - lastFrequency) * (elapsedDms / totalDms);
+            intermediateFreq = lastFrequency + (element.frequency - lastFrequency) * (elapsedDms / totalDms);
           else
-            intermediateFreq = frequency;
+            intermediateFreq = element.frequency;
           tonePair.play(centralTone, intermediateFreq);
           unsigned long halfWaveLength = round(5000.0 / intermediateFreq);
           setLEDPhase(LED_ON, alt_leds_blink);
@@ -587,13 +580,17 @@ void loop() {
       if (machineState != STATE_RUNNING) {
         break; // interrupt button was pressed
       };
-      lastFrequency = frequency;
+      lastFrequency = element.frequency;
       j++;
-      readProgramData(session_ptr, j, &duration, &frequency);
+      readBrainwaveElement(session_ptr, j, &element);
     };
   } else if (currentSession == SESSION_SETUP) {
     while (machineState == STATE_RUNNING) {
+#ifdef LEDS_TO_GROUND
+      LEDIntensity = mapPot(0, 255-31);
+#else
       LEDIntensity = mapPot(31, 255);
+#endif
       setLEDs(LED_ON);
       delay(50);
     }
