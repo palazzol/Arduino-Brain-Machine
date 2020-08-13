@@ -362,7 +362,7 @@ int currentSession;
 
 #define NUM_BRAINWAVE_SESSIONS 5
 
-const brainwaveElement * const brainwaveSessions[] PROGMEM = {
+const brainwaveElement *brainwaveSessions[] = {
   proteusGoodMorning04, proteusGoodNight43,
   proteusVisuals33, proteusMeditation10,
   originalArduino
@@ -506,14 +506,14 @@ void loop() {
 
 
 #ifdef DEBUG
-  Serial.print("Chose session #");
+  Serial.print("Choose session #");
   Serial.println(currentSession);
 #endif
   unsigned long startedAt = millis();
   j = 0;
   if (currentSession < NUM_BRAINWAVE_SESSIONS) {
     // The session pointer points to the current session table in program memory
-    PGM_VOID_P session_ptr = pgm_read_word( &brainwaveSessions[currentSession] );
+    brainwaveElement *session_ptr = brainwaveSessions[currentSession];
     float lastFrequency = 0.0;
     bool do_chunky = false;
     bool alt_leds_blink = false;
