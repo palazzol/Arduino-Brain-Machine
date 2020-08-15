@@ -62,6 +62,23 @@
 // for the audio, and is not portable.
 #define USE_RAW_TIMERS
 
+// Minimum PWM brightness for LEDs
+#define BRIGHTNESS_MIN 10
+// Default brightness for LEDs - overridden by EEPROM
+#define BRIGHTNESS_DEFAULT 127
+// Max brightness
+#define BRIGHTNESS_MAX (255-31)
+
+// time between battery checks (two minutes default)
+#define TIMEOUT_DURATION_MS 120000L
+// the button debounce time; increase if the output flickers
+#define DEBOUNCE_DELAY_MS 300L
+
+// central tone frequency
+#define DEFAULT_CENTRAL_TONE 440.0
+
+/////////////////////////////////////////////////////////////////////////////
+
 #ifndef USE_RAW_TIMERS
 
 // This class abstracts the connection to the Tone library
@@ -204,15 +221,16 @@ class TonePair
 #define interruptPin 2 // the input pin where the pushbutton is connected.
 #define potPin A0 // user input potentiometer (session selection)
 
-int LEDIntensity = 127; // Default value, will be overridden by valid value in EEPROM
 
 #ifndef LEDS_TO_GROUND
 // Common anode. 255 is off
 #define LED_ON (255-LEDIntensity)
 #define LED_OFF 255
+int LEDIntensity = 255-BRIGHTNESS_DEFAULT; // Default value, will be overridden by valid value in EEPROM
 #else
 #define LED_ON (LEDIntensity)
 #define LED_OFF 0
+int LEDIntensity = BRIGHTNESS_DEFAULT; // Default value, will be overridden by valid value in EEPROM
 #endif
 
 /***************************************************
@@ -249,7 +267,7 @@ int LEDIntensity = 127; // Default value, will be overridden by valid value in E
 #define GAMMA_HZ 40.4
 
 TonePair tonePair;
-float centralTone = 440.0; //We're starting at this tone and spreading the binaural beat from there.
+float centralTone = DEFAULT_CENTRAL_TONE; //We're starting at this tone and spreading the binaural beat from there.
 
 struct brainwaveElement {
   int duration;  // Seconds
@@ -257,11 +275,6 @@ struct brainwaveElement {
 };
 
 unsigned long timeout_start; //used for count down timer
-
-// time between battery checks (two minutes default)
-#define TIMEOUT_DURATION_MS 120000L
-// the button debounce time; increase if the output flickers
-#define DEBOUNCE_DELAY_MS 300L
 
 // Internal use
 #define MODE_SPECIAL_FREQ -1.0
@@ -722,10 +735,14 @@ void loop() {
     };
   } else if (currentSession == SESSION_SETUP) {
     while (machineState == STATE_RUNNING) {
+      int brightness = mapPot(BRIGHTNESS_MIN, BRIGHTNESS_MAX);
+      // reverse the pot because the menu selection for brightness should be on the dim end, 
+      // to keep from jarring you with max brightness
+      brightness = BRIGHTNESS_MAX - brightness + BRIGHTNESS_MIN;
 #ifdef LEDS_TO_GROUND
-      LEDIntensity = mapPot(0, 255-31);
+      LEDIntensity = 255 - brightness;
 #else
-      LEDIntensity = mapPot(31, 255);
+      LEDIntensity = brightness;
 #endif
       setLEDs(LED_ON);
       delay(50);
