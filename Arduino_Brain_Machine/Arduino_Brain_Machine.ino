@@ -58,7 +58,7 @@
 //#define LEDS_TO_GROUND
 
 // By default, use Tone library.  Use this define if you want the
-// beat frequency to be exact.  This forces the use of certain pins 
+// beat frequency to be exact.  This forces the use of certain pins
 // for the audio, and is not portable.
 #define USE_RAW_TIMERS
 
@@ -81,8 +81,8 @@ class TonePair
       leftEarTone.begin(leftEarPin); // Tone leftEarTone begins at pin output leftEarPin
     }
     void play(float centralTone, float binauralBeatFreq) {
-      rightEarTone.play(centralTone - (binauralBeatFreq/2));
-      leftEarTone.play(centralTone + (binauralBeatFreq/2));
+      rightEarTone.play(centralTone - (binauralBeatFreq / 2));
+      leftEarTone.play(centralTone + (binauralBeatFreq / 2));
     }
     void stop() {
       rightEarTone.stop();
@@ -112,10 +112,10 @@ class TonePair
 
       // Using Timer2 and Timer1, so as not to impact Timer0
       // which is used by Arduino for other timing functions
-      
+
       DDRB = 0b00000000;   // set PB1,PB3 pins as outputs
       PORTB = 0x00;        // all PORTB output pins Off
-      
+
       // Right ear tone will use Timer2, 8-bit resolution
       TIMSK2 = 0x00;       // no Timer interrupts enabled
       //   8-bit Timer2 OC2A (PB3, pin 11) is set up for Fast PWM mode, toggling output on each compare
@@ -123,14 +123,14 @@ class TonePair
       //   Prescale = 256
       //   F = Fclk / (2 * Prescale * (1 + OCR2A) )
       TCCR2A = 0b01000011;  // COM0A1:0=01 to toggle OC0A on Compare Match
-                            // COM0B1:0=00 to disconnect OC0B
-                            // bits 3:2 are unused
-                            // WGM01:00=11 for Fast PWM Mode (WGM02=1 in TCCR0B)
+      // COM0B1:0=00 to disconnect OC0B
+      // bits 3:2 are unused
+      // WGM01:00=11 for Fast PWM Mode (WGM02=1 in TCCR0B)
       TCCR2B = 0b00001110;  // FOC0A=0 (no force compare)
-                            // F0C0B=0 (no force compare)
-                            // bits 5:4 are unused
-                            // WGM2=1 for fast PWM Mode (WGM01:00=11 in TCCR0A)
-                            // CS02:00=110 for divide by 256 prescaler
+      // F0C0B=0 (no force compare)
+      // bits 5:4 are unused
+      // WGM2=1 for fast PWM Mode (WGM01:00=11 in TCCR0A)
+      // CS02:00=110 for divide by 256 prescaler
       TIMSK1 = 0x00;        //  no Timer interrupts enabled
       // Left ear tone will use Timer1, 16-bit resolution
       // set up T1 to accept Offset Frequencies on Right ear speaker through OC1A (but don't actually start the Timer1 here)
@@ -139,22 +139,22 @@ class TonePair
       //   Prescale = 1
       //   F = Fclk / (2 * Prescale * (1 + OCR1A) )
       TCCR1A = 0b01000011;  // COM1A1:0=01 to toggle OC1A on Compare Match
-                            // COM1B1:0=00 to disconnect OC1B
-                            // bits 3:2 are unused
-                            // WGM11:10=11 for Fast PWM Mode (WGM13:12=11 in TCCR1B)
+      // COM1B1:0=00 to disconnect OC1B
+      // bits 3:2 are unused
+      // WGM11:10=11 for Fast PWM Mode (WGM13:12=11 in TCCR1B)
       TCCR1B = 0b00011001;  // ICNC1=0 (no Noise Canceller)
-                            // ICES1=0 (don't care about Input Capture Edge)
-                            // bit 5 is unused
-                            // WGM13:12=11 for for Fast PWM Mode (WGM11:11=00 in TCCR1A)
-                            // CS12:10=001 for divide by 1 prescaler
+      // ICES1=0 (don't care about Input Capture Edge)
+      // bit 5 is unused
+      // WGM13:12=11 for for Fast PWM Mode (WGM11:11=00 in TCCR1A)
+      // CS12:10=001 for divide by 1 prescaler
       TCCR1C = 0b00000000;  // FOC1A=0 (no Force Output Compare for Channel A)
-                            // FOC1B=0 (no Force Output Compare for Channel B)
-                            // bits 5:0 are unused
+      // FOC1B=0 (no Force Output Compare for Channel B)
+      // bits 5:0 are unused
 
     }
     void play(float centralTone, float binauralBeat) {
-      
-      // Strategy: 
+
+      // Strategy:
       // Set the frequency for the lower tone based to (central-binaural/2)
       // using Timer2.  This is an 8-bit timer, so it may not be exact
       // Then, get the actual frequency of the lower tone, and use it compute the upper
@@ -163,11 +163,11 @@ class TonePair
       // is less accurate.
 
       // 31250 = 16Mhz Clk / (2 * 256)
-      int lowFreqPeriod = int(F_CPU/2.0/256/(centralTone - binauralBeat/2) + 0.5);
-      float actualLowFreq = F_CPU/2.0/256/lowFreqPeriod;  // retrieve the value used
+      int lowFreqPeriod = int(F_CPU / 2.0 / 256 / (centralTone - binauralBeat / 2) + 0.5);
+      float actualLowFreq = F_CPU / 2.0 / 256 / lowFreqPeriod; // retrieve the value used
       float actualHighFreq = actualLowFreq + binauralBeat; // calculate the upper frequency
       // 8000000 = 16Mhz / (2 * 1)
-      int highFreqPeriod = int(F_CPU/2.0/actualHighFreq + 0.5);
+      int highFreqPeriod = int(F_CPU / 2.0 / actualHighFreq + 0.5);
 
       // set the frequencies
       OCR2A = lowFreqPeriod - 1;  // on OC2A (PB3, pin 11)
@@ -256,6 +256,13 @@ struct brainwaveElement {
   float frequency; // Hz
 };
 
+unsigned long timeout_start; //used for count down timer
+
+// time between battery checks (two minutes default)
+#define TIMEOUT_DURATION_MS 120000L
+// the button debounce time; increase if the output flickers
+#define DEBOUNCE_DELAY_MS 300L
+
 // Internal use
 #define MODE_SPECIAL_FREQ -1.0
 #define MODE_CHUNKY 1
@@ -320,30 +327,127 @@ const brainwaveElement proteusMeditation10[] PROGMEM = {
 ***************************************************/
 const brainwaveElement originalArduino[] PROGMEM = {
   TAG_FORMAT_CHUNKY,
-  { 60, BETA_HZ }, { 10, ALPHA_HZ }, { 20, BETA_HZ }, { 15, ALPHA_HZ }, { 15, BETA_HZ },
-  { 20, ALPHA_HZ }, { 10, BETA_HZ }, { 30, ALPHA_HZ }, { 5, BETA_HZ }, { 60, ALPHA_HZ }, { 10, THETA_HZ },
-  TAG_ALT_BLINK, { 30, ALPHA_HZ },
-  { 20, THETA_HZ }, { 20, ALPHA_HZ }, { 30, THETA_HZ },
-  TAG_ALT_BLINK, { 15, ALPHA_HZ }, 
-  { 60, THETA_HZ }, { 10, ALPHA_HZ }, { 1, BETA_HZ }, { 5, ALPHA_HZ },
-  TAG_ALT_BLINK, { 55, THETA_HZ },
-  { 1, DELTA_HZ }, { 45, THETA_HZ }, { 5, DELTA_HZ },
-  TAG_ALT_BLINK, { 35, THETA_HZ },
-  { 10, DELTA_HZ }, { 25, THETA_HZ }, { 15, DELTA_HZ }, { 1, GAMMA_HZ },
-  TAG_ALT_BLINK, { 5, THETA_HZ },
-  { 1, GAMMA_HZ }, { 30, DELTA_HZ }, { 5, GAMMA_HZ }, { 60, DELTA_HZ }, { 10, GAMMA_HZ },
-  TAG_ALT_BLINK, { 30, DELTA_HZ },
-  { 5, GAMMA_HZ }, { 15, DELTA_HZ }, { 1, GAMMA_HZ }, { 10, THETA_HZ },
-  TAG_ALT_BLINK, { 10, DELTA_HZ },
-  { 20, THETA_HZ }, { 1, ALPHA_HZ }, { 10, DELTA_HZ }, { 30, THETA_HZ }, { 5, ALPHA_HZ },
-  TAG_ALT_BLINK, { 1, BETA_HZ },
-  { 10, ALPHA_HZ }, { 22, THETA_HZ },
-  TAG_ALT_BLINK, { 15, ALPHA_HZ },
-  { 1, BETA_HZ }, { 30, ALPHA_HZ }, { 5, BETA_HZ }, { 20, ALPHA_HZ },
-  TAG_ALT_BLINK, { 12, BETA_HZ },
-  { 15, ALPHA_HZ }, { 20, BETA_HZ }, { 10, ALPHA_HZ }, { 25, ALPHA_HZ },
-  TAG_ALT_BLINK, { 5, ALPHA_HZ },
-  { 60, BETA_HZ }, { 0, 0 }
+  { 60, BETA_HZ }, 
+  { 10, ALPHA_HZ }, 
+  { 20, BETA_HZ }, 
+  { 15, ALPHA_HZ }, 
+  { 15, BETA_HZ },
+  { 20, ALPHA_HZ }, 
+  { 10, BETA_HZ }, 
+  { 30, ALPHA_HZ }, 
+  { 5, BETA_HZ }, 
+  { 60, ALPHA_HZ }, 
+  { 10, THETA_HZ },
+  TAG_ALT_BLINK, 
+  { 30, ALPHA_HZ },
+  { 20, THETA_HZ }, 
+  { 20, ALPHA_HZ }, 
+  { 30, THETA_HZ },
+  TAG_ALT_BLINK, 
+  { 15, ALPHA_HZ },
+  { 60, THETA_HZ }, 
+  { 10, ALPHA_HZ }, 
+  { 1, BETA_HZ }, 
+  { 5, ALPHA_HZ },
+  TAG_ALT_BLINK, 
+  { 55, THETA_HZ },
+  { 1, DELTA_HZ }, 
+  { 45, THETA_HZ }, 
+  { 5, DELTA_HZ },
+  TAG_ALT_BLINK, 
+  { 35, THETA_HZ },
+  { 10, DELTA_HZ }, 
+  { 25, THETA_HZ }, 
+  { 15, DELTA_HZ }, 
+  { 1, GAMMA_HZ },
+  TAG_ALT_BLINK, 
+  { 5, THETA_HZ },
+  { 1, GAMMA_HZ }, 
+  { 30, DELTA_HZ }, 
+  { 5, GAMMA_HZ }, 
+  { 60, DELTA_HZ }, 
+  { 10, GAMMA_HZ },
+  TAG_ALT_BLINK, 
+  { 30, DELTA_HZ },
+  { 5, GAMMA_HZ }, 
+  { 15, DELTA_HZ }, 
+  { 1, GAMMA_HZ }, 
+  { 10, THETA_HZ },
+  TAG_ALT_BLINK, 
+  { 10, DELTA_HZ },
+  { 20, THETA_HZ }, 
+  { 1, ALPHA_HZ }, 
+  { 10, DELTA_HZ }, 
+  { 30, THETA_HZ }, 
+  { 5, ALPHA_HZ },
+  TAG_ALT_BLINK, 
+  { 1, BETA_HZ },
+  { 10, ALPHA_HZ }, 
+  { 22, THETA_HZ },
+  TAG_ALT_BLINK, 
+  { 15, ALPHA_HZ },
+  { 1, BETA_HZ }, 
+  { 30, ALPHA_HZ }, 
+  { 5, BETA_HZ }, 
+  { 20, ALPHA_HZ },
+  TAG_ALT_BLINK, 
+  { 12, BETA_HZ },
+  { 15, ALPHA_HZ }, 
+  { 20, BETA_HZ }, 
+  { 10, ALPHA_HZ }, 
+  { 25, ALPHA_HZ },
+  TAG_ALT_BLINK, 
+  { 5, ALPHA_HZ },
+  { 60, BETA_HZ }, 
+  { 0, 0 }
+};
+
+const brainwaveElement originalAltman[] PROGMEM = {
+  TAG_FORMAT_CHUNKY,
+  { 60, BETA_HZ }, 
+  { 10, ALPHA_HZ }, 
+  { 20, BETA_HZ }, 
+  { 15, ALPHA_HZ }, 
+  { 15, BETA_HZ },
+  { 20, ALPHA_HZ }, 
+  { 10, BETA_HZ }, 
+  { 30, ALPHA_HZ }, 
+  { 5, BETA_HZ }, 
+  { 60, ALPHA_HZ }, 
+  { 10, THETA_HZ },
+  { 30, ALPHA_HZ },
+  { 20, THETA_HZ }, 
+  { 30, ALPHA_HZ }, 
+  { 30, THETA_HZ },
+  { 15, ALPHA_HZ },
+  { 60, THETA_HZ }, 
+  { 15, ALPHA_HZ }, 
+  { 1, BETA_HZ }, 
+  { 15, ALPHA_HZ },
+  { 60, THETA_HZ },
+  { 1, DELTA_HZ }, 
+  { 10, THETA_HZ }, 
+  { 1, DELTA_HZ },
+  { 10, THETA_HZ },
+  { 1, DELTA_HZ }, 
+  { 30, THETA_HZ }, 
+  { 15, ALPHA_HZ }, 
+  { 1, BETA_HZ },
+  { 15, ALPHA_HZ },
+  { 30, THETA_HZ }, 
+  { 15, ALPHA_HZ }, 
+  { 1, BETA_HZ }, 
+  { 20, ALPHA_HZ }, 
+  { 5, BETA_HZ },
+  { 20, ALPHA_HZ },
+  { 15, BETA_HZ }, 
+  { 15, ALPHA_HZ }, 
+  { 20, BETA_HZ }, 
+  { 10, ALPHA_HZ },
+  { 25, BETA_HZ },
+  { 5, ALPHA_HZ }, 
+  { 60, BETA_HZ }, 
+  { 0, 0 }
 };
 
 /***************************************************
@@ -365,7 +469,7 @@ int currentSession;
 const brainwaveElement *brainwaveSessions[] = {
   proteusGoodMorning04, proteusGoodNight43,
   proteusVisuals33, proteusMeditation10,
-  originalArduino
+  originalAltman //change to originalArduino to go back to the one modified by LaughingOnWater
 };
 
 int blink_patterns[NUM_SESSIONS] = {
@@ -401,7 +505,7 @@ void setLEDPhase(int state, bool led_alt) {
     analogWrite(leftEyePin, !state);
   } else {
     analogWrite(rightEyePin, state);
-    analogWrite(leftEyePin, state);    
+    analogWrite(leftEyePin, state);
   }
 }
 
@@ -419,15 +523,34 @@ volatile int machineState = STATE_READY;
 
 void buttonInterrupt()
 {
-  switch (machineState) {
-    case STATE_READY:
-      machineState = STATE_RUNNING;
-      break;
-    case STATE_RUNNING:
-    case STATE_SLEEPING:
-      machineState = STATE_READY; // Back to the normal ready/running cycle
-      break;
+  static unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
+ 
+  if ((millis() - lastDebounceTime) > DEBOUNCE_DELAY_MS) {
+    timeout_start = millis();
+#ifdef DEBUG
+    Serial.println("button interrupt");
+#endif
+    switch (machineState) {
+      case STATE_READY:
+        machineState = STATE_RUNNING;
+        break;
+      case STATE_RUNNING:
+      case STATE_SLEEPING:
+        machineState = STATE_READY; // Back to the normal ready/running cycle
+        break;
+    }
+  }else{
+    
+#ifdef DEBUG
+    Serial.println("bounce bounce bounce");
+#endif
   }
+  lastDebounceTime = millis();
+
+
+
+
+
 }
 
 void init_from_EEPROM()
@@ -436,22 +559,22 @@ void init_from_EEPROM()
   // 0/1 0x1234 - Magic Number
   // 2 - byte version
   // 3 - LEDIntensity
-  
+
   int header = EEPROM.read(0);
   header = (header << 8) + EEPROM.read(1);
-  
+
   if (header != 0x1234) // Not initialized
   {
-      EEPROM.write(0, 0x12);
-      EEPROM.write(1, 0x34);
-      EEPROM.write(2, 0x00);
-      EEPROM.write(3, LEDIntensity);
+    EEPROM.write(0, 0x12);
+    EEPROM.write(1, 0x34);
+    EEPROM.write(2, 0x00);
+    EEPROM.write(3, LEDIntensity);
   }
   byte version = EEPROM.read(2);
   if (version == 0)
   {
-      // This is an int, but I think 255 is the max value
-      LEDIntensity = EEPROM.read(3);
+    // This is an int, but I think 255 is the max value
+    LEDIntensity = EEPROM.read(3);
   }
 }
 
@@ -470,8 +593,9 @@ void init_from_EEPROM()
 */
 void setup()  {
 #ifdef DEBUG
-  Serial.begin(9600);
+  Serial.begin(115200);
 #endif
+  timeout_start = millis();
   tonePair.begin(rightEarPin, leftEarPin); // Set pins for right and left ears
   pinMode(rightEyePin, OUTPUT); // Pin output at rightEye
   pinMode(leftEyePin, OUTPUT); // Pin output at leftEye
@@ -494,13 +618,25 @@ void readBrainwaveElement(PGM_VOID_P session_ptr, int j, brainwaveElement *eleme
 
 void loop() {
   int j;
+
 #ifdef DEBUG
   Serial.println("Waiting for session selection...");
+  Serial.print("Timeout in ");
+  Serial.print((TIMEOUT_DURATION_MS - (millis() - timeout_start)) / 1000);
+  Serial.println(" seconds");
 #endif
   while (machineState == STATE_READY) {
     currentSession = mapPot(0, NUM_SESSIONS - 1);
     blinkSessionSelection(currentSession);
     delay(50);
+    if (millis() - timeout_start > TIMEOUT_DURATION_MS) //sleep timer loop
+    {
+#ifdef DEBUG
+      Serial.println("menu timed out, going to sleep");
+#endif
+      goToSleep();
+    }
+
   }
   setLEDs(LED_OFF);
 
@@ -539,7 +675,7 @@ void loop() {
           Serial.print(" in ");
         } else {
           Serial.print(element.frequency);
-          Serial.print(" for ");          
+          Serial.print(" for ");
         }
         Serial.print(element.duration);
       }
@@ -612,20 +748,29 @@ void loop() {
   if (machineState != STATE_READY) {
     // Session finished (we're not here due to an interrupt button push)
     // Shut down everything and put the CPU to sleep
-    machineState = STATE_SLEEPING;
-#ifdef DEBUG
-    Serial.println("Sleeping...");
-    delay(1000); // let the dust settle...
-#endif
-    sleep_enable();          // enables the sleep bit in the mcucr register so sleep is possible. just a safety pin
-    sleep_mode();            // here the device is actually put to sleep
-    // THE PROGRAM CONTINUES FROM HERE AFTER WAKING UP
-    sleep_disable();            // first thing after waking from sleep: disable sleep...
-    delay(1000); // let the dust settle...
-#ifdef DEBUG
-    Serial.println("Woke up.");
-#endif
+    goToSleep();
   }
+}
+
+/***************************************************
+  This function puts the machine to sleep and wakes it up again upon interrupt
+***************************************************/
+
+void goToSleep()
+{
+  machineState = STATE_SLEEPING;
+#ifdef DEBUG
+  Serial.println("Sleeping...");
+  delay(1000); // let the dust settle...
+#endif
+  sleep_enable();          // enables the sleep bit in the mcucr register so sleep is possible. just a safety pin
+  sleep_mode();            // here the device is actually put to sleep
+  // THE PROGRAM CONTINUES FROM HERE AFTER WAKING UP
+  sleep_disable();            // first thing after waking from sleep: disable sleep...
+  delay(1000); // let the dust settle...
+#ifdef DEBUG
+  Serial.println("Woke up.");
+#endif
 }
 
 /***************************************************
