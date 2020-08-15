@@ -74,7 +74,7 @@
 // the button debounce time; increase if the output flickers
 #define DEBOUNCE_DELAY_MS 300L
 
-// central tone frequency
+// central tone frequency - overridden by EEPROM
 #define DEFAULT_CENTRAL_TONE 440.0
 
 /////////////////////////////////////////////////////////////////////////////
@@ -575,19 +575,20 @@ void init_from_EEPROM()
 
   int header = EEPROM.read(0);
   header = (header << 8) + EEPROM.read(1);
-
-  if (header != 0x1234) // Not initialized
-  {
-    EEPROM.write(0, 0x12);
-    EEPROM.write(1, 0x34);
-    EEPROM.write(2, 0x00);
-    EEPROM.write(3, LEDIntensity);
-  }
   byte version = EEPROM.read(2);
-  if (version == 0)
+
+  if ((header != 0x1234) && (version != 1))// Not initialized
   {
+    EEPROM.update(0, 0x12);
+    EEPROM.update(1, 0x34);
+    EEPROM.update(2, 0x01);
+    EEPROM.update(3, LEDIntensity);
+    EEPROM.update(4, ((int)centralTone)-200);
+  }
+  else {
     // This is an int, but I think 255 is the max value
     LEDIntensity = EEPROM.read(3);
+    centralTone = (float)(EEPROM.read(4)+200);
   }
 }
 
@@ -751,6 +752,19 @@ void loop() {
 #ifdef DEBUG
     Serial.print("Set intensity (0-255) to ");
     Serial.println(LEDIntensity);
+#endif
+    // continue to the frequency setup
+    machineState = STATE_RUNNING;
+    while (machineState == STATE_RUNNING) {
+      tonePair.play(centralTone, 0);
+      centralTone = (float)mapPot(200, 440);
+      delay(50);
+    }
+    tonePair.stop();
+    EEPROM.update(4, int(centralTone-200));
+#ifdef DEBUG
+    Serial.print("Set centralTone frequency to ");
+    Serial.println(centralTone);
 #endif
   };
 
